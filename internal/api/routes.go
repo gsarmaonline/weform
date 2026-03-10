@@ -42,7 +42,7 @@ func NewRouter(cfg *config.Config, db *pgxpool.Pool) *gin.Engine {
 
 	// Services
 	workspaceSvc := service.NewWorkspaceService(workspaceRepo)
-	authSvc := service.NewAuthService(userRepo, workspaceSvc, cfg.Auth.JWTSecret, cfg.Auth.JWTExpiryHours, cfg.Auth.GoogleClientID)
+	authSvc := service.NewAuthService(userRepo, workspaceSvc, cfg.Auth.JWTSecret, cfg.Auth.JWTExpiryHours, cfg.Auth.GoogleClientID, cfg.Auth.GoogleClientSecret, cfg.Auth.GoogleRedirectURL, cfg.Auth.FrontendURL)
 	formSvc := service.NewFormService(formRepo, workspaceRepo)
 	builderSvc := service.NewBuilderService(builderRepo, formRepo, workspaceRepo)
 	workflowSvc := service.NewWorkflowService(workflowRepo, formRepo, workspaceRepo, cfg.SMTP)
@@ -68,8 +68,11 @@ func NewRouter(cfg *config.Config, db *pgxpool.Pool) *gin.Engine {
 	v1 := r.Group("/api/v1")
 
 	// Auth (public)
-	v1.POST("/auth/google", auth.GoogleAuth)
+	v1.GET("/auth/google", auth.GoogleInit)
 	v1.POST("/auth/test-login", testAuth.TestLogin) // only active when ENV=test
+
+	// OAuth callback is at root level (not under /api/v1) for clean redirect URI
+	r.GET("/auth/callback", auth.GoogleCallback)
 
 	authed := v1.Group("")
 	authed.Use(middleware.Auth(cfg.Auth.JWTSecret))

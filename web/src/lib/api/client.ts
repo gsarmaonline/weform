@@ -12,10 +12,9 @@ class ApiError extends Error {
 }
 
 function getToken(): string | null {
-  if (typeof window === 'undefined') return null
-  // backendToken is injected into the page by the session provider
-  // see useBackendToken hook
-  return sessionStorage.getItem('backendToken')
+  if (typeof document === 'undefined') return null
+  const match = document.cookie.match(/(?:^|;\s*)backend_token=([^;]*)/)
+  return match ? decodeURIComponent(match[1]) : null
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {

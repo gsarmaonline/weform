@@ -1,6 +1,8 @@
-import { signIn } from '@/lib/auth'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080/api/v1'
 
 export default function SignInPage() {
+  const googleSignInUrl = `${API_BASE}/auth/google`
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
       <div className="w-full max-w-sm space-y-6 rounded-xl border bg-card p-8 shadow-sm">
@@ -8,20 +10,13 @@ export default function SignInPage() {
           <h1 className="text-2xl font-bold">weform</h1>
           <p className="text-muted-foreground text-sm">Sign in to your account</p>
         </div>
-        <form
-          action={async () => {
-            'use server'
-            await signIn('google', { redirectTo: '/dashboard' })
-          }}
+        <a
+          href={googleSignInUrl}
+          className="flex w-full items-center justify-center gap-3 rounded-md border bg-background px-4 py-2.5 text-sm font-medium shadow-sm transition-colors hover:bg-accent"
         >
-          <button
-            type="submit"
-            className="flex w-full items-center justify-center gap-3 rounded-md border bg-background px-4 py-2.5 text-sm font-medium shadow-sm transition-colors hover:bg-accent"
-          >
-            <GoogleIcon />
-            Continue with Google
-          </button>
-        </form>
+          <GoogleIcon />
+          Continue with Google
+        </a>
       </div>
     </div>
   )

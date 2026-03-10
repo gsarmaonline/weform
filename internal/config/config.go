@@ -30,10 +30,13 @@ type SMTPConfig struct {
 }
 
 type AuthConfig struct {
-	JWTSecret          string `mapstructure:"JWT_SECRET"`
-	JWTExpiryHours     int    `mapstructure:"JWT_EXPIRY_HOURS"`
-	RefreshExpiryHours int    `mapstructure:"REFRESH_EXPIRY_HOURS"`
-	GoogleClientID     string `mapstructure:"GOOGLE_CLIENT_ID"`
+	JWTSecret            string `mapstructure:"JWT_SECRET"`
+	JWTExpiryHours       int    `mapstructure:"JWT_EXPIRY_HOURS"`
+	RefreshExpiryHours   int    `mapstructure:"REFRESH_EXPIRY_HOURS"`
+	GoogleClientID       string `mapstructure:"GOOGLE_CLIENT_ID"`
+	GoogleClientSecret   string `mapstructure:"GOOGLE_CLIENT_SECRET"`
+	GoogleRedirectURL    string `mapstructure:"GOOGLE_REDIRECT_URL"`
+	FrontendURL          string `mapstructure:"FRONTEND_URL"`
 }
 
 func Load() (*Config, error) {
@@ -46,6 +49,8 @@ func Load() (*Config, error) {
 	viper.SetDefault("ALLOWED_ORIGINS", "http://localhost:3000")
 	viper.SetDefault("JWT_EXPIRY_HOURS", 24)
 	viper.SetDefault("REFRESH_EXPIRY_HOURS", 168)
+	viper.SetDefault("GOOGLE_REDIRECT_URL", "http://localhost:8080/auth/callback")
+	viper.SetDefault("FRONTEND_URL", "http://localhost:3000")
 
 	// Read .env if present; ignore missing file
 	viper.SetConfigFile(".env")
@@ -65,6 +70,9 @@ func Load() (*Config, error) {
 	cfg.Auth.JWTExpiryHours = viper.GetInt("JWT_EXPIRY_HOURS")
 	cfg.Auth.RefreshExpiryHours = viper.GetInt("REFRESH_EXPIRY_HOURS")
 	cfg.Auth.GoogleClientID = viper.GetString("GOOGLE_CLIENT_ID")
+	cfg.Auth.GoogleClientSecret = viper.GetString("GOOGLE_CLIENT_SECRET")
+	cfg.Auth.GoogleRedirectURL = viper.GetString("GOOGLE_REDIRECT_URL")
+	cfg.Auth.FrontendURL = viper.GetString("FRONTEND_URL")
 	cfg.SMTP.Host = viper.GetString("SMTP_HOST")
 	cfg.SMTP.Port = viper.GetInt("SMTP_PORT")
 	cfg.SMTP.Username = viper.GetString("SMTP_USERNAME")

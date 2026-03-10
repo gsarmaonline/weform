@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -16,22 +18,40 @@ func NewAuthHandler(auth *service.AuthService) *AuthHandler {
 	return &AuthHandler{auth: auth}
 }
 
-type googleAuthRequest struct {
-	IDToken string `json:"idToken" binding:"required"`
+// GoogleInit redirects the user to Google's OAuth consent screen.
+func (h *AuthHandler) GoogleInit(c *gin.Context) {
+	b := make([]byte, 16)
+	rand.Read(b)
+	state := base64.URLEncoding.EncodeToString(b)
+
+	// Store state in a short-lived cookie for CSRF protection
+	c.SetCookie("oauth_state", state, 300, "/", "", false, true)
+	c.Redirect(http.StatusTemporaryRedirect, h.auth.GoogleAuthURL(state))
 }
 
-func (h *AuthHandler) GoogleAuth(c *gin.Context) {
-	var req googleAuthRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		apierr.BadRequest(c, "idToken is required")
+// GoogleCallback handles the OAuth callback from Google.
+func (h *AuthHandler) GoogleCallback(c *gin.Context) {
+	// Validate state
+	stateCookie, err := c.Cookie("oauth_state")
+	if err != nil || stateCookie != c.Query("state") {
+		apierr.BadRequest(c, "invalid oauth state")
+		return
+	}
+	c.SetCookie("oauth_state", "", -1, "/", "", false, true)
+
+	code := c.Query("code")
+	if code == "" {
+		apierr.BadRequest(c, "missing code")
 		return
 	}
 
-	result, err := h.auth.ExchangeGoogleToken(c.Request.Context(), req.IDToken)
+	result, err := h.auth.ExchangeCode(c.Request.Context(), code)
 	if err != nil {
-		apierr.Respond(c, http.StatusUnauthorized, "INVALID_TOKEN", err.Error())
+		apierr.Respond(c, http.StatusUnauthorized, "AUTH_FAILED", err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, result)
+	// Redirect frontend to /auth/callback?token=<jwt>
+	redirectURL := h.auth.FrontendURL() + "/auth/callback?token=" + result.Token
+	c.Redirect(http.StatusTemporaryRedirect, redirectURL)
 }
