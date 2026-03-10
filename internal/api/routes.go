@@ -5,6 +5,8 @@ import (
 	"github.com/gsarmaonline/weform/internal/api/handlers"
 	"github.com/gsarmaonline/weform/internal/api/middleware"
 	"github.com/gsarmaonline/weform/internal/config"
+	"github.com/gsarmaonline/weform/internal/repository"
+	"github.com/gsarmaonline/weform/internal/service"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -17,8 +19,20 @@ func NewRouter(cfg *config.Config, db *pgxpool.Pool) *gin.Engine {
 	r.Use(middleware.Logger())
 	r.Use(gin.Recovery())
 
+	// Repositories
+	userRepo := repository.NewUserRepository(db)
+
+	// Services
+	authSvc := service.NewAuthService(
+		userRepo,
+		cfg.Auth.JWTSecret,
+		cfg.Auth.JWTExpiryHours,
+		cfg.Auth.GoogleClientID,
+	)
+
 	// Handlers
 	health := handlers.NewHealthHandler(db)
+	auth := handlers.NewAuthHandler(authSvc)
 
 	// Public routes
 	r.GET("/health", health.Check)
@@ -26,10 +40,7 @@ func NewRouter(cfg *config.Config, db *pgxpool.Pool) *gin.Engine {
 	v1 := r.Group("/api/v1")
 	{
 		// Auth (public)
-		// auth := handlers.NewAuthHandler(...)
-		// v1.POST("/auth/register", auth.Register)
-		// v1.POST("/auth/login", auth.Login)
-		// v1.POST("/auth/refresh", auth.Refresh)
+		v1.POST("/auth/google", auth.GoogleAuth)
 
 		// Authenticated routes
 		authed := v1.Group("")
@@ -39,7 +50,6 @@ func NewRouter(cfg *config.Config, db *pgxpool.Pool) *gin.Engine {
 			// workspaces := handlers.NewWorkspaceHandler(...)
 			// authed.GET("/workspaces", workspaces.List)
 			// authed.POST("/workspaces", workspaces.Create)
-			// authed.GET("/workspaces/:workspaceID", workspaces.Get)
 
 			// Forms
 			// forms := handlers.NewFormHandler(...)
@@ -53,7 +63,7 @@ func NewRouter(cfg *config.Config, db *pgxpool.Pool) *gin.Engine {
 			// authed.GET("/workspaces/:workspaceID/forms/:formID/responses", responses.List)
 		}
 
-		// Public form submission (no auth required)
+		// Public form submission (no auth)
 		// v1.POST("/f/:formSlug/responses", responses.Submit)
 		// v1.GET("/f/:formSlug", forms.GetPublic)
 	}

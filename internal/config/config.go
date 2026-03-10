@@ -23,6 +23,7 @@ type AuthConfig struct {
 	JWTSecret          string `mapstructure:"JWT_SECRET"`
 	JWTExpiryHours     int    `mapstructure:"JWT_EXPIRY_HOURS"`
 	RefreshExpiryHours int    `mapstructure:"REFRESH_EXPIRY_HOURS"`
+	GoogleClientID     string `mapstructure:"GOOGLE_CLIENT_ID"`
 }
 
 func Load() (*Config, error) {
@@ -51,6 +52,7 @@ func Load() (*Config, error) {
 	cfg.Auth.JWTSecret = viper.GetString("JWT_SECRET")
 	cfg.Auth.JWTExpiryHours = viper.GetInt("JWT_EXPIRY_HOURS")
 	cfg.Auth.RefreshExpiryHours = viper.GetInt("REFRESH_EXPIRY_HOURS")
+	cfg.Auth.GoogleClientID = viper.GetString("GOOGLE_CLIENT_ID")
 
 	return cfg, nil
 }

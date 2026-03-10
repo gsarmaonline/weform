@@ -73,9 +73,13 @@ Weform is an opensource typeform alternative.
 ## Tech Stack
 
 - **Backend**: Go + Gin
+- **Frontend**: Next.js 15 (App Router), Tailwind CSS, shadcn/ui
 - **Database**: PostgreSQL (migrations in `db/migrations/`)
+- **Auth**: Google OAuth via NextAuth.js + Go JWT
 
 ## Development
+
+### Backend
 
 ```bash
 # Copy and configure environment
@@ -86,3 +90,16 @@ go run ./cmd/server
 ```
 
 The server exposes `GET /health` to verify the API and database are reachable.
+
+### Frontend
+
+```bash
+cd web
+cp .env.local.example .env.local
+# Fill in GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, AUTH_SECRET
+
+npm install
+npm run dev
+```
+
+The frontend runs on `http://localhost:3000`. Authentication uses Google OAuth only.
