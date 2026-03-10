@@ -24,12 +24,14 @@ func NewRouter(cfg *config.Config, db *pgxpool.Pool) *gin.Engine {
 	workspaceRepo := repository.NewWorkspaceRepository(db)
 	formRepo := repository.NewFormRepository(db)
 	builderRepo := repository.NewBuilderRepository(db)
+	responseRepo := repository.NewResponseRepository(db)
 
 	// Services
 	workspaceSvc := service.NewWorkspaceService(workspaceRepo)
 	authSvc := service.NewAuthService(userRepo, workspaceSvc, cfg.Auth.JWTSecret, cfg.Auth.JWTExpiryHours, cfg.Auth.GoogleClientID)
 	formSvc := service.NewFormService(formRepo, workspaceRepo)
 	builderSvc := service.NewBuilderService(builderRepo, formRepo, workspaceRepo)
+	rendererSvc := service.NewRendererService(responseRepo)
 
 	// Handlers
 	health := handlers.NewHealthHandler(db)
@@ -37,6 +39,7 @@ func NewRouter(cfg *config.Config, db *pgxpool.Pool) *gin.Engine {
 	workspaces := handlers.NewWorkspaceHandler(workspaceSvc)
 	forms := handlers.NewFormHandler(formSvc)
 	builder := handlers.NewBuilderHandler(builderSvc)
+	renderer := handlers.NewRendererHandler(rendererSvc)
 
 	// Public
 	r.GET("/health", health.Check)
@@ -72,9 +75,10 @@ func NewRouter(cfg *config.Config, db *pgxpool.Pool) *gin.Engine {
 	authed.PUT("/workspaces/:workspaceID/forms/:formID/fields/:fieldID", builder.UpdateField)
 	authed.DELETE("/workspaces/:workspaceID/forms/:formID/fields/:fieldID", builder.DeleteField)
 
-	// Public form renderer
-	// v1.GET("/f/:formSlug", forms.GetPublic)
-	// v1.POST("/f/:formSlug/responses", responses.Submit)
+	// Public form renderer (no auth)
+	v1.GET("/f/:slug", renderer.GetPublicForm)
+	v1.POST("/f/:slug/sessions", renderer.StartSession)
+	v1.POST("/f/:slug/submit", renderer.SubmitResponse)
 
 	return r
 }
