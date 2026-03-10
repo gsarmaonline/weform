@@ -12,8 +12,9 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Port string `mapstructure:"PORT"`
-	Env  string `mapstructure:"ENV"`
+	Port            string `mapstructure:"PORT"`
+	Env             string `mapstructure:"ENV"`
+	AllowedOrigins  string `mapstructure:"ALLOWED_ORIGINS"`
 }
 
 type DatabaseConfig struct {
@@ -43,6 +44,7 @@ func Load() (*Config, error) {
 	// Defaults
 	viper.SetDefault("PORT", "8080")
 	viper.SetDefault("ENV", "development")
+	viper.SetDefault("ALLOWED_ORIGINS", "http://localhost:3000")
 	viper.SetDefault("JWT_EXPIRY_HOURS", 24)
 	viper.SetDefault("REFRESH_EXPIRY_HOURS", 168)
 
@@ -57,6 +59,7 @@ func Load() (*Config, error) {
 	// Allow flat env vars to map into nested structs
 	cfg.Server.Port = viper.GetString("PORT")
 	cfg.Server.Env = viper.GetString("ENV")
+	cfg.Server.AllowedOrigins = viper.GetString("ALLOWED_ORIGINS")
 	cfg.Database.URL = viper.GetString("DATABASE_URL")
 	cfg.Auth.JWTSecret = viper.GetString("JWT_SECRET")
 	cfg.Auth.JWTExpiryHours = viper.GetInt("JWT_EXPIRY_HOURS")

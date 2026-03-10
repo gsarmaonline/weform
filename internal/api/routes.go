@@ -1,6 +1,9 @@
 package api
 
 import (
+	"strings"
+
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/gsarmaonline/weform/internal/api/handlers"
 	"github.com/gsarmaonline/weform/internal/api/middleware"
@@ -18,6 +21,14 @@ func NewRouter(cfg *config.Config, db *pgxpool.Pool) *gin.Engine {
 	r := gin.New()
 	r.Use(middleware.Logger())
 	r.Use(gin.Recovery())
+
+	origins := strings.Split(cfg.Server.AllowedOrigins, ",")
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     origins,
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowCredentials: true,
+	}))
 
 	// Repositories
 	userRepo := repository.NewUserRepository(db)
