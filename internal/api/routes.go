@@ -49,6 +49,8 @@ func NewRouter(cfg *config.Config, db *pgxpool.Pool) *gin.Engine {
 	rendererSvc := service.NewRendererService(responseRepo, logicRepo, workflowSvc)
 	logicSvc := service.NewLogicService(logicRepo, formRepo, workspaceRepo)
 
+	testAuth := handlers.NewTestAuthHandler(authSvc)
+
 	// Handlers
 	health := handlers.NewHealthHandler(db)
 	auth := handlers.NewAuthHandler(authSvc)
@@ -67,6 +69,7 @@ func NewRouter(cfg *config.Config, db *pgxpool.Pool) *gin.Engine {
 
 	// Auth (public)
 	v1.POST("/auth/google", auth.GoogleAuth)
+	v1.POST("/auth/test-login", testAuth.TestLogin) // only active when ENV=test
 
 	authed := v1.Group("")
 	authed.Use(middleware.Auth(cfg.Auth.JWTSecret))

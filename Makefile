@@ -1,4 +1,4 @@
-.PHONY: build up down logs ps backend frontend run-local
+.PHONY: build up down logs ps backend frontend run-local test test-ui
 
 build:
 	docker compose build
@@ -11,6 +11,12 @@ down:
 
 logs:
 	docker compose logs -f
+
+test:
+	cd web && npx playwright test --project=chromium
+
+test-ui:
+	cd web && npx playwright test --ui
 
 run-local:
 	@trap 'kill 0' SIGINT; \

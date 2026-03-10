@@ -6,9 +6,6 @@ import { cn } from '@/lib/utils'
 
 const navItems = [
   { label: 'Forms', href: '/dashboard' },
-  { label: 'Results', href: '/dashboard/results' },
-  { label: 'Workflows', href: '/dashboard/workflows' },
-  { label: 'Settings', href: '/dashboard/settings' },
 ]
 
 export function Sidebar() {

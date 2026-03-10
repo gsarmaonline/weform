@@ -87,6 +87,18 @@ func (s *AuthService) ExchangeGoogleToken(ctx context.Context, idToken string) (
 	return &GoogleAuthResult{Token: token, User: user}, nil
 }
 
+// IssueTokenForEmail upserts a user by email and returns a JWT. Only for test use.
+func (s *AuthService) IssueTokenForEmail(ctx context.Context, email string) (string, error) {
+	user, err := s.users.UpsertByEmail(ctx, email, nil, nil)
+	if err != nil {
+		return "", err
+	}
+	if _, err := s.workspaces.EnsureDefault(ctx, user.ID, email); err != nil {
+		return "", err
+	}
+	return s.issueJWT(user.ID)
+}
+
 func (s *AuthService) issueJWT(userID string) (string, error) {
 	claims := jwt.MapClaims{
 		"user_id": userID,
