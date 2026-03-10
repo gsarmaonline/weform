@@ -11,12 +11,3 @@ down:
 
 logs:
 	docker compose logs -f
-
-ps:
-	docker compose ps
-
-backend:
-	docker compose build backend && docker compose up -d backend
-
-frontend:
-	docker compose build frontend && docker compose up -d frontend
