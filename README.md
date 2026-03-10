@@ -2,6 +2,34 @@
 
 Weform is an opensource typeform alternative.
 
+## Running locally
+
+**Prerequisites:** Docker + Docker Compose
+
+```bash
+# 1. Configure environment
+cp .env.example .env
+# Fill in: JWT_SECRET, NEXTAUTH_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+# Generate secrets: openssl rand -base64 32
+
+# 2. Build images
+make build
+
+# 3. Start all services (Postgres, backend, frontend)
+make up
+
+# 4. Verify
+make ps
+curl http://localhost:8080/health
+```
+
+Open `http://localhost:3000`.
+
+```bash
+make logs   # tail logs
+make down   # stop containers
+```
+
 ## Elements
 
 ### Forms
