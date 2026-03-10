@@ -1,0 +1,19 @@
+.git
+.github
+*.md
+.env
+.env.*
+!.env.example
+
+# Go
+vendor/
+
+# Node
+web/node_modules/
+web/.next/
+web/.env*
+!web/.env.example
+
+# Misc
+.DS_Store
+*.log
