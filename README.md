@@ -69,3 +69,20 @@ Weform is an opensource typeform alternative.
 - REST API for programmatic form management
 - Rate limiting
 - Spam protection (CAPTCHA, submission limits)
+
+## Tech Stack
+
+- **Backend**: Go + Gin
+- **Database**: PostgreSQL (migrations in `db/migrations/`)
+
+## Development
+
+```bash
+# Copy and configure environment
+cp .env.example .env
+
+# Run the server
+go run ./cmd/server
+```
+
+The server exposes `GET /health` to verify the API and database are reachable.
