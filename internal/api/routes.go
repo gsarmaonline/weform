@@ -25,6 +25,7 @@ func NewRouter(cfg *config.Config, db *pgxpool.Pool) *gin.Engine {
 	formRepo := repository.NewFormRepository(db)
 	builderRepo := repository.NewBuilderRepository(db)
 	responseRepo := repository.NewResponseRepository(db)
+	analyticsRepo := repository.NewAnalyticsRepository(db)
 
 	// Services
 	workspaceSvc := service.NewWorkspaceService(workspaceRepo)
@@ -40,6 +41,7 @@ func NewRouter(cfg *config.Config, db *pgxpool.Pool) *gin.Engine {
 	forms := handlers.NewFormHandler(formSvc)
 	builder := handlers.NewBuilderHandler(builderSvc)
 	renderer := handlers.NewRendererHandler(rendererSvc)
+	analytics := handlers.NewAnalyticsHandler(analyticsRepo, workspaceSvc)
 
 	// Public
 	r.GET("/health", health.Check)
@@ -74,6 +76,11 @@ func NewRouter(cfg *config.Config, db *pgxpool.Pool) *gin.Engine {
 	authed.POST("/workspaces/:workspaceID/forms/:formID/pages/:pageID/fields/reorder", builder.ReorderFields)
 	authed.PUT("/workspaces/:workspaceID/forms/:formID/fields/:fieldID", builder.UpdateField)
 	authed.DELETE("/workspaces/:workspaceID/forms/:formID/fields/:fieldID", builder.DeleteField)
+
+	// Analytics
+	authed.GET("/workspaces/:workspaceID/forms/:formID/analytics", analytics.GetStats)
+	authed.GET("/workspaces/:workspaceID/forms/:formID/responses", analytics.ListResponses)
+	authed.GET("/workspaces/:workspaceID/forms/:formID/responses/export", analytics.ExportCSV)
 
 	// Public form renderer (no auth)
 	v1.GET("/f/:slug", renderer.GetPublicForm)

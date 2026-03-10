@@ -33,6 +33,12 @@ export function BuilderToolbar({ workspaceId, formId }: BuilderToolbarProps) {
       </div>
       <div className="flex items-center gap-2">
         <a
+          href={`/forms/${formId}/results`}
+          className="inline-flex items-center rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-accent transition-colors"
+        >
+          Results
+        </a>
+        <a
           href={`/f/${form?.slug}`}
           target="_blank"
           rel="noopener noreferrer"
