@@ -8,6 +8,7 @@ type Config struct {
 	Server   ServerConfig
 	Database DatabaseConfig
 	Auth     AuthConfig
+	SMTP     SMTPConfig
 }
 
 type ServerConfig struct {
@@ -17,6 +18,14 @@ type ServerConfig struct {
 
 type DatabaseConfig struct {
 	URL string `mapstructure:"DATABASE_URL"`
+}
+
+type SMTPConfig struct {
+	Host     string `mapstructure:"SMTP_HOST"`
+	Port     int    `mapstructure:"SMTP_PORT"`
+	Username string `mapstructure:"SMTP_USERNAME"`
+	Password string `mapstructure:"SMTP_PASSWORD"`
+	From     string `mapstructure:"SMTP_FROM"`
 }
 
 type AuthConfig struct {
@@ -53,6 +62,11 @@ func Load() (*Config, error) {
 	cfg.Auth.JWTExpiryHours = viper.GetInt("JWT_EXPIRY_HOURS")
 	cfg.Auth.RefreshExpiryHours = viper.GetInt("REFRESH_EXPIRY_HOURS")
 	cfg.Auth.GoogleClientID = viper.GetString("GOOGLE_CLIENT_ID")
+	cfg.SMTP.Host = viper.GetString("SMTP_HOST")
+	cfg.SMTP.Port = viper.GetInt("SMTP_PORT")
+	cfg.SMTP.Username = viper.GetString("SMTP_USERNAME")
+	cfg.SMTP.Password = viper.GetString("SMTP_PASSWORD")
+	cfg.SMTP.From = viper.GetString("SMTP_FROM")
 
 	return cfg, nil
 }

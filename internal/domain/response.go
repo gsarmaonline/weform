@@ -39,12 +39,13 @@ type ResponseAnswer struct {
 
 // PublicForm is the shape returned to the renderer — no sensitive data.
 type PublicForm struct {
-	ID            string      `json:"id"`
-	Title         string      `json:"title"`
-	Slug          string      `json:"slug"`
-	Status        FormStatus  `json:"status"`
-	WelcomeScreen interface{} `json:"welcomeScreen"`
-	ThankYouScreen interface{} `json:"thankYouScreen"`
-	Theme         interface{} `json:"theme"`
-	Pages         []*FormPage `json:"pages"`
+	ID             string       `json:"id"`
+	Title          string       `json:"title"`
+	Slug           string       `json:"slug"`
+	Status         FormStatus   `json:"status"`
+	WelcomeScreen  interface{}  `json:"welcomeScreen"`
+	ThankYouScreen interface{}  `json:"thankYouScreen"`
+	Theme          interface{}  `json:"theme"`
+	Pages          []*FormPage  `json:"pages"`
+	LogicRules     []*LogicRule `json:"logicRules"`
 }

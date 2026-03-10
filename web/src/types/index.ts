@@ -174,6 +174,43 @@ export interface LogicRule {
   conditions: LogicCondition[]
 }
 
+// ---- Workflows ------------------------------------------------------------
+
+export type WorkflowTrigger = 'on_submission' | 'on_completion'
+export type WorkflowActionType = 'email_notification' | 'email_autoresponder' | 'webhook'
+
+export interface EmailNotificationConfig {
+  to: string[]
+  subject: string
+  includeResponseData: boolean
+}
+
+export interface WebhookConfig {
+  url: string
+  method: 'POST' | 'GET' | 'PUT'
+  headers?: Record<string, string>
+}
+
+export interface WorkflowAction {
+  id: string
+  workflowId: string
+  type: WorkflowActionType
+  position: number
+  isEnabled: boolean
+  config: EmailNotificationConfig | WebhookConfig | Record<string, unknown>
+}
+
+export interface Workflow {
+  id: string
+  formId: string
+  name: string
+  isEnabled: boolean
+  trigger: WorkflowTrigger
+  actions: WorkflowAction[]
+  createdAt: string
+  updatedAt: string
+}
+
 // ---- Form -----------------------------------------------------------------
 
 export interface WelcomeScreen {

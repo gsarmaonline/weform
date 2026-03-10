@@ -26,13 +26,17 @@ func NewRouter(cfg *config.Config, db *pgxpool.Pool) *gin.Engine {
 	builderRepo := repository.NewBuilderRepository(db)
 	responseRepo := repository.NewResponseRepository(db)
 	analyticsRepo := repository.NewAnalyticsRepository(db)
+	logicRepo := repository.NewLogicRepository(db)
+	workflowRepo := repository.NewWorkflowRepository(db)
 
 	// Services
 	workspaceSvc := service.NewWorkspaceService(workspaceRepo)
 	authSvc := service.NewAuthService(userRepo, workspaceSvc, cfg.Auth.JWTSecret, cfg.Auth.JWTExpiryHours, cfg.Auth.GoogleClientID)
 	formSvc := service.NewFormService(formRepo, workspaceRepo)
 	builderSvc := service.NewBuilderService(builderRepo, formRepo, workspaceRepo)
-	rendererSvc := service.NewRendererService(responseRepo)
+	workflowSvc := service.NewWorkflowService(workflowRepo, formRepo, workspaceRepo, cfg.SMTP)
+	rendererSvc := service.NewRendererService(responseRepo, logicRepo, workflowSvc)
+	logicSvc := service.NewLogicService(logicRepo, formRepo, workspaceRepo)
 
 	// Handlers
 	health := handlers.NewHealthHandler(db)
@@ -42,6 +46,8 @@ func NewRouter(cfg *config.Config, db *pgxpool.Pool) *gin.Engine {
 	builder := handlers.NewBuilderHandler(builderSvc)
 	renderer := handlers.NewRendererHandler(rendererSvc)
 	analytics := handlers.NewAnalyticsHandler(analyticsRepo, workspaceSvc)
+	logic := handlers.NewLogicHandler(logicSvc)
+	workflow := handlers.NewWorkflowHandler(workflowSvc)
 
 	// Public
 	r.GET("/health", health.Check)
@@ -81,6 +87,21 @@ func NewRouter(cfg *config.Config, db *pgxpool.Pool) *gin.Engine {
 	authed.GET("/workspaces/:workspaceID/forms/:formID/analytics", analytics.GetStats)
 	authed.GET("/workspaces/:workspaceID/forms/:formID/responses", analytics.ListResponses)
 	authed.GET("/workspaces/:workspaceID/forms/:formID/responses/export", analytics.ExportCSV)
+
+	// Logic rules
+	authed.GET("/workspaces/:workspaceID/forms/:formID/logic", logic.GetRules)
+	authed.POST("/workspaces/:workspaceID/forms/:formID/logic", logic.CreateRule)
+	authed.PUT("/workspaces/:workspaceID/forms/:formID/logic/:ruleID", logic.UpdateRule)
+	authed.DELETE("/workspaces/:workspaceID/forms/:formID/logic/:ruleID", logic.DeleteRule)
+
+	// Workflows
+	authed.GET("/workspaces/:workspaceID/forms/:formID/workflows", workflow.List)
+	authed.POST("/workspaces/:workspaceID/forms/:formID/workflows", workflow.Create)
+	authed.PUT("/workspaces/:workspaceID/forms/:formID/workflows/:workflowID", workflow.Update)
+	authed.DELETE("/workspaces/:workspaceID/forms/:formID/workflows/:workflowID", workflow.Delete)
+	authed.POST("/workspaces/:workspaceID/forms/:formID/workflows/:workflowID/actions", workflow.AddAction)
+	authed.PUT("/workspaces/:workspaceID/forms/:formID/workflows/:workflowID/actions/:actionID", workflow.UpdateAction)
+	authed.DELETE("/workspaces/:workspaceID/forms/:formID/workflows/:workflowID/actions/:actionID", workflow.DeleteAction)
 
 	// Public form renderer (no auth)
 	v1.GET("/f/:slug", renderer.GetPublicForm)

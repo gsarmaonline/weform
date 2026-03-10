@@ -13,20 +13,58 @@ import { Rating } from './fields/Rating'
 import { OpinionScale } from './fields/OpinionScale'
 import { NumberInput } from './fields/NumberInput'
 import { PictureChoice } from './fields/PictureChoice'
-import type { Form, FormField, FieldConfig, AnswerValue } from '@/types'
+import type { Form, FormField, FieldConfig, AnswerValue, LogicRule, LogicCondition } from '@/types'
 
 interface FormRendererProps {
   form: Form
+}
+
+// Evaluate a single condition against current answers
+function evalCondition(c: LogicCondition, answers: Record<string, AnswerValue>): boolean {
+  const raw = answers[c.fieldId]
+  const val = raw !== null && raw !== undefined ? String(raw) : ''
+  const isEmpty = raw === null || raw === undefined || raw === '' || (Array.isArray(raw) && raw.length === 0)
+  switch (c.operator) {
+    case 'is':           return val === (c.value ?? '')
+    case 'is_not':       return val !== (c.value ?? '')
+    case 'contains':     return val.includes(c.value ?? '')
+    case 'not_contains': return !val.includes(c.value ?? '')
+    case 'gt':           return parseFloat(val) > parseFloat(c.value ?? '0')
+    case 'gte':          return parseFloat(val) >= parseFloat(c.value ?? '0')
+    case 'lt':           return parseFloat(val) < parseFloat(c.value ?? '0')
+    case 'lte':          return parseFloat(val) <= parseFloat(c.value ?? '0')
+    case 'is_empty':     return isEmpty
+    case 'is_not_empty': return !isEmpty
+    default:             return false
+  }
+}
+
+// Returns the matching rule for the given page, or null
+function matchRule(pageId: string, rules: LogicRule[], answers: Record<string, AnswerValue>): LogicRule | null {
+  const pageRules = rules
+    .filter((r) => r.sourcePageId === pageId)
+    .sort((a, b) => a.position - b.position)
+
+  for (const rule of pageRules) {
+    const results = rule.conditions.map((c) => evalCondition(c, answers))
+    const matched = rule.operator === 'all' ? results.every(Boolean) : results.some(Boolean)
+    if (matched) return rule
+  }
+  return null
 }
 
 export function FormRenderer({ form }: FormRendererProps) {
   const [sessionToken, setSessionToken] = useState<string | null>(null)
   const [started, setStarted] = useState(!form.welcomeScreen)
   const [currentPageIndex, setCurrentPageIndex] = useState(0)
+  const [pageHistory, setPageHistory] = useState<number[]>([])
   const [answers, setAnswers] = useState<Record<string, AnswerValue>>({})
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [disqualified, setDisqualified] = useState(false)
+
+  const logicRules: LogicRule[] = (form as any).logicRules ?? []
 
   const handleStart = async () => {
     try {
@@ -34,7 +72,7 @@ export function FormRenderer({ form }: FormRendererProps) {
       setSessionToken(token)
       setStarted(true)
     } catch {
-      setStarted(true) // Proceed even if session creation fails
+      setStarted(true)
     }
   }
 
@@ -42,32 +80,19 @@ export function FormRenderer({ form }: FormRendererProps) {
     setAnswers((prev) => ({ ...prev, [fieldId]: value }))
   }, [])
 
-  const handleNext = async () => {
-    const isLast = currentPageIndex === form.pages.length - 1
-    if (!isLast) {
-      setCurrentPageIndex((i) => i + 1)
-      return
-    }
-
-    // Submit
+  const doSubmit = async (currentAnswers: Record<string, AnswerValue>) => {
     setSubmitting(true)
     setError(null)
     try {
-      const page = form.pages[currentPageIndex]
       const allAnswers: AnswerInput[] = []
-
-      for (const field of (page?.fields ?? [])) {
-        const val = answers[field.id]
-        if (val !== undefined && val !== null && val !== '') {
-          allAnswers.push({
-            fieldId: field.id,
-            fieldRef: field.ref,
-            fieldType: field.type,
-            value: val,
-          })
+      for (const page of form.pages) {
+        for (const field of page.fields) {
+          const val = currentAnswers[field.id]
+          if (val !== undefined && val !== null && val !== '') {
+            allAnswers.push({ fieldId: field.id, fieldRef: field.ref, fieldType: field.type, value: val })
+          }
         }
       }
-
       if (sessionToken) {
         await rendererApi.submit(form.slug, sessionToken, allAnswers)
       }
@@ -77,6 +102,63 @@ export function FormRenderer({ form }: FormRendererProps) {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const handleNext = async () => {
+    const page = form.pages[currentPageIndex]
+    const matchedRule = matchRule(page.id, logicRules, answers)
+
+    if (matchedRule) {
+      switch (matchedRule.destinationType) {
+        case 'thank_you':
+          await doSubmit(answers)
+          return
+        case 'disqualify':
+          setDisqualified(true)
+          return
+        case 'url':
+          if (matchedRule.destinationUrl) window.location.href = matchedRule.destinationUrl
+          return
+        case 'page': {
+          const targetIdx = form.pages.findIndex((p) => p.id === matchedRule.destinationPageId)
+          if (targetIdx !== -1) {
+            setPageHistory((h) => [...h, currentPageIndex])
+            setCurrentPageIndex(targetIdx)
+            return
+          }
+          break
+        }
+      }
+    }
+
+    const isLast = currentPageIndex === form.pages.length - 1
+    if (!isLast) {
+      setPageHistory((h) => [...h, currentPageIndex])
+      setCurrentPageIndex((i) => i + 1)
+      return
+    }
+
+    await doSubmit(answers)
+  }
+
+  const handleBack = () => {
+    if (pageHistory.length > 0) {
+      const prev = pageHistory[pageHistory.length - 1]
+      setPageHistory((h) => h.slice(0, -1))
+      setCurrentPageIndex(prev)
+    } else if (currentPageIndex > 0) {
+      setCurrentPageIndex((i) => i - 1)
+    }
+  }
+
+  // Disqualified screen
+  if (disqualified) {
+    return (
+      <FormScreen>
+        <h1 className="text-3xl font-bold">We're sorry</h1>
+        <p className="mt-3 text-muted-foreground">Based on your responses, you don't qualify to continue.</p>
+      </FormScreen>
+    )
   }
 
   // Welcome screen
@@ -171,8 +253,8 @@ export function FormRenderer({ form }: FormRendererProps) {
       )}
 
       <div className="mt-10 flex items-center justify-between">
-        {currentPageIndex > 0 ? (
-          <Button variant="outline" onClick={() => setCurrentPageIndex((i) => i - 1)}>
+        {(currentPageIndex > 0 || pageHistory.length > 0) ? (
+          <Button variant="outline" onClick={handleBack}>
             Back
           </Button>
         ) : <div />}

@@ -13,14 +13,27 @@ import (
 
 type RendererService struct {
 	responses *repository.ResponseRepository
+	logic     *repository.LogicRepository
+	workflows *WorkflowService
 }
 
-func NewRendererService(responses *repository.ResponseRepository) *RendererService {
-	return &RendererService{responses: responses}
+func NewRendererService(responses *repository.ResponseRepository, logic *repository.LogicRepository, workflows *WorkflowService) *RendererService {
+	return &RendererService{responses: responses, logic: logic, workflows: workflows}
 }
 
 func (s *RendererService) GetPublicForm(ctx context.Context, slug string) (*domain.PublicForm, error) {
-	return s.responses.GetFormBySlug(ctx, slug)
+	form, err := s.responses.GetFormBySlug(ctx, slug)
+	if err != nil {
+		return nil, err
+	}
+
+	rules, err := s.logic.GetByFormID(ctx, form.ID)
+	if err != nil {
+		return nil, err
+	}
+	form.LogicRules = rules
+
+	return form, nil
 }
 
 type StartSessionResult struct {
@@ -43,10 +56,10 @@ func (s *RendererService) StartSession(ctx context.Context, formID string, ip, u
 }
 
 type SubmitAnswerInput struct {
-	FieldID   string          `json:"fieldId"`
-	FieldRef  string          `json:"fieldRef"`
+	FieldID   string           `json:"fieldId"`
+	FieldRef  string           `json:"fieldRef"`
 	FieldType domain.FieldType `json:"fieldType"`
-	Value     json.RawMessage `json:"value"`
+	Value     json.RawMessage  `json:"value"`
 }
 
 func (s *RendererService) Submit(ctx context.Context, sessionToken string, inputs []SubmitAnswerInput) (*domain.FormResponse, error) {
@@ -54,21 +67,13 @@ func (s *RendererService) Submit(ctx context.Context, sessionToken string, input
 		return nil, fmt.Errorf("no answers provided")
 	}
 
-	// First save answers, then mark submitted
-	// We need the responseID — get it via token
-	// For simplicity, do a quick lookup in SaveAnswers flow:
-	// We'll fetch the response by token inside the transaction in a simplified way.
-	// Since we need response_id, we do a two-step approach.
-
-	// Step 1: look up response
 	row := s.responses.DB().QueryRow(ctx,
-		`SELECT id FROM form_responses WHERE session_token = $1`, sessionToken)
-	var responseID string
-	if err := row.Scan(&responseID); err != nil {
+		`SELECT id, form_id FROM form_responses WHERE session_token = $1`, sessionToken)
+	var responseID, formID string
+	if err := row.Scan(&responseID, &formID); err != nil {
 		return nil, fmt.Errorf("session not found")
 	}
 
-	// Step 2: save answers
 	answers := make([]domain.ResponseAnswer, len(inputs))
 	for i, inp := range inputs {
 		answers[i] = domain.ResponseAnswer{
@@ -83,8 +88,15 @@ func (s *RendererService) Submit(ctx context.Context, sessionToken string, input
 		return nil, err
 	}
 
-	// Step 3: mark submitted
-	return s.responses.SubmitResponse(ctx, sessionToken)
+	result, err := s.responses.SubmitResponse(ctx, sessionToken)
+	if err != nil {
+		return nil, err
+	}
+
+	// Fire workflows asynchronously
+	go s.workflows.Execute(formID, answers)
+
+	return result, nil
 }
 
 func generateToken() (string, error) {
