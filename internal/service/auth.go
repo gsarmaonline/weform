@@ -14,6 +14,7 @@ import (
 
 type AuthService struct {
 	users          *repository.UserRepository
+	workspaces     *WorkspaceService
 	jwtSecret      []byte
 	jwtExpiryHours int
 	googleClientID string
@@ -21,12 +22,14 @@ type AuthService struct {
 
 func NewAuthService(
 	users *repository.UserRepository,
+	workspaces *WorkspaceService,
 	jwtSecret string,
 	jwtExpiryHours int,
 	googleClientID string,
 ) *AuthService {
 	return &AuthService{
 		users:          users,
+		workspaces:     workspaces,
 		jwtSecret:      []byte(jwtSecret),
 		jwtExpiryHours: jwtExpiryHours,
 		googleClientID: googleClientID,
@@ -65,6 +68,15 @@ func (s *AuthService) ExchangeGoogleToken(ctx context.Context, idToken string) (
 	user, err := s.users.UpsertByEmail(ctx, email, fullName, avatarURL)
 	if err != nil {
 		return nil, fmt.Errorf("upsert user: %w", err)
+	}
+
+	// Ensure new users always have a default workspace
+	displayName := email
+	if fullName != nil && *fullName != "" {
+		displayName = *fullName
+	}
+	if _, err := s.workspaces.EnsureDefault(ctx, user.ID, displayName); err != nil {
+		return nil, fmt.Errorf("ensure default workspace: %w", err)
 	}
 
 	token, err := s.issueJWT(user.ID)

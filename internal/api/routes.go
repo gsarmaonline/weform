@@ -21,18 +21,25 @@ func NewRouter(cfg *config.Config, db *pgxpool.Pool) *gin.Engine {
 
 	// Repositories
 	userRepo := repository.NewUserRepository(db)
+	workspaceRepo := repository.NewWorkspaceRepository(db)
+	formRepo := repository.NewFormRepository(db)
 
 	// Services
+	workspaceSvc := service.NewWorkspaceService(workspaceRepo)
 	authSvc := service.NewAuthService(
 		userRepo,
+		workspaceSvc,
 		cfg.Auth.JWTSecret,
 		cfg.Auth.JWTExpiryHours,
 		cfg.Auth.GoogleClientID,
 	)
+	formSvc := service.NewFormService(formRepo, workspaceRepo)
 
 	// Handlers
 	health := handlers.NewHealthHandler(db)
 	auth := handlers.NewAuthHandler(authSvc)
+	workspaces := handlers.NewWorkspaceHandler(workspaceSvc)
+	forms := handlers.NewFormHandler(formSvc)
 
 	// Public routes
 	r.GET("/health", health.Check)
@@ -47,25 +54,22 @@ func NewRouter(cfg *config.Config, db *pgxpool.Pool) *gin.Engine {
 		authed.Use(middleware.Auth(cfg.Auth.JWTSecret))
 		{
 			// Workspaces
-			// workspaces := handlers.NewWorkspaceHandler(...)
-			// authed.GET("/workspaces", workspaces.List)
-			// authed.POST("/workspaces", workspaces.Create)
+			authed.GET("/workspaces", workspaces.List)
+			authed.POST("/workspaces", workspaces.Create)
+			authed.GET("/workspaces/:workspaceID", workspaces.Get)
 
 			// Forms
-			// forms := handlers.NewFormHandler(...)
-			// authed.GET("/workspaces/:workspaceID/forms", forms.List)
-			// authed.POST("/workspaces/:workspaceID/forms", forms.Create)
-			// authed.GET("/workspaces/:workspaceID/forms/:formID", forms.Get)
-			// authed.PUT("/workspaces/:workspaceID/forms/:formID", forms.Update)
-			// authed.DELETE("/workspaces/:workspaceID/forms/:formID", forms.Delete)
-
-			// Responses
-			// authed.GET("/workspaces/:workspaceID/forms/:formID/responses", responses.List)
+			authed.GET("/workspaces/:workspaceID/forms", forms.List)
+			authed.POST("/workspaces/:workspaceID/forms", forms.Create)
+			authed.GET("/workspaces/:workspaceID/forms/:formID", forms.Get)
+			authed.PUT("/workspaces/:workspaceID/forms/:formID", forms.Update)
+			authed.POST("/workspaces/:workspaceID/forms/:formID/publish", forms.Publish)
+			authed.DELETE("/workspaces/:workspaceID/forms/:formID", forms.Delete)
 		}
 
-		// Public form submission (no auth)
-		// v1.POST("/f/:formSlug/responses", responses.Submit)
+		// Public form (no auth)
 		// v1.GET("/f/:formSlug", forms.GetPublic)
+		// v1.POST("/f/:formSlug/responses", responses.Submit)
 	}
 
 	return r

@@ -1,9 +1,9 @@
 import { api } from './client'
-import type { Form, FormPage, FormField, PaginatedResponse } from '@/types'
+import type { Form, FormPage, FormField } from '@/types'
 
 export const formsApi = {
   list: (workspaceId: string) =>
-    api.get<PaginatedResponse<Form>>(`/workspaces/${workspaceId}/forms`),
+    api.get<{ data: Form[] }>(`/workspaces/${workspaceId}/forms`),
 
   get: (workspaceId: string, formId: string) =>
     api.get<Form>(`/workspaces/${workspaceId}/forms/${formId}`),
