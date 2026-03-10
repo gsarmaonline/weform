@@ -27,7 +27,6 @@ go.work.sum
 # env files
 .env
 .env.local
-web/.env.local
 
 # Editor/IDE
 # .idea/

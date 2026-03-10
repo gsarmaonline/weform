@@ -19,6 +19,7 @@ test-ui:
 	cd web && npx playwright test --ui
 
 run-local:
+	@ln -sf ../.env.local web/.env.local
 	@trap 'kill 0' SIGINT; \
 	go run ./cmd/server & \
 	cd web && npm run dev & \

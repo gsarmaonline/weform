@@ -37,7 +37,6 @@ type AuthConfig struct {
 }
 
 func Load() (*Config, error) {
-	viper.SetConfigFile(".env")
 	viper.SetConfigType("env")
 	viper.AutomaticEnv()
 
@@ -48,8 +47,11 @@ func Load() (*Config, error) {
 	viper.SetDefault("JWT_EXPIRY_HOURS", 24)
 	viper.SetDefault("REFRESH_EXPIRY_HOURS", 168)
 
-	// Read .env if it exists; ignore error if not present
+	// Read .env then .env.local (local overrides); ignore missing files
+	viper.SetConfigFile(".env")
 	_ = viper.ReadInConfig()
+	viper.SetConfigFile(".env.local")
+	_ = viper.MergeInConfig()
 
 	cfg := &Config{}
 	if err := viper.Unmarshal(cfg); err != nil {
