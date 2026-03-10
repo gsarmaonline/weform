@@ -4,21 +4,21 @@ Weform is an opensource typeform alternative.
 
 ## Running locally
 
+### With Docker (recommended)
+
 **Prerequisites:** Docker + Docker Compose
 
 ```bash
-# 1. Configure environment
-cp .env.example .env
-# Fill in: JWT_SECRET, NEXTAUTH_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+# 1. Configure environment (one file for everything)
+cp .env.example .env.local
+# Fill in: JWT_SECRET, AUTH_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
 # Generate secrets: openssl rand -base64 32
 
-# 2. Build images
+# 2. Build and start (Postgres + backend + frontend)
 make build
-
-# 3. Start all services (Postgres, backend, frontend)
 make up
 
-# 4. Verify
+# 3. Verify
 make ps
 curl http://localhost:8080/health
 ```
@@ -29,6 +29,21 @@ Open `http://localhost:3000`.
 make logs   # tail logs
 make down   # stop containers
 ```
+
+### Without Docker (native)
+
+**Prerequisites:** Go 1.21+, Node.js 20+, PostgreSQL
+
+```bash
+# 1. Configure environment
+cp .env.example .env.local
+# Fill in the required values
+
+# 2. Start both servers
+make run-local
+```
+
+`make run-local` symlinks `.env.local` into `web/` so both the Go backend and Next.js frontend share the same config file.
 
 ## Elements
 
