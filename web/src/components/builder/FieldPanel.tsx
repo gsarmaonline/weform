@@ -1,6 +1,7 @@
 'use client'
 
 import { useBuilderStore } from '@/lib/stores/builderStore'
+import { useAddField } from '@/lib/hooks/useBuilder'
 import type { FieldType } from '@/types'
 
 const FIELD_GROUPS: { label: string; fields: { type: FieldType; label: string }[] }[] = [
@@ -46,19 +47,28 @@ const FIELD_GROUPS: { label: string; fields: { type: FieldType; label: string }[
   },
 ]
 
-export function FieldPanel() {
-  const addField = useBuilderStore((s) => s.addField)
+interface FieldPanelProps {
+  workspaceId: string | undefined
+  formId: string
+}
+
+export function FieldPanel({ workspaceId, formId }: FieldPanelProps) {
   const selectedPageId = useBuilderStore((s) => s.selectedPageId)
   const form = useBuilderStore((s) => s.form)
+  const addFieldStore = useBuilderStore((s) => s.addField)
+  const selectField = useBuilderStore((s) => s.selectField)
+  const addField = useAddField(workspaceId, formId)
 
-  const handleAdd = (type: FieldType) => {
+  const handleAdd = async (type: FieldType) => {
     if (!selectedPageId) return
     const page = form?.pages.find((p) => p.id === selectedPageId)
     const position = page?.fields.length ?? 0
 
-    addField(selectedPageId, {
-      id: crypto.randomUUID(),
-      ref: `field_${crypto.randomUUID().slice(0, 8)}`,
+    // Optimistic: add to store immediately
+    const tempId = `temp-${Date.now()}`
+    addFieldStore(selectedPageId, {
+      id: tempId,
+      ref: `field_${tempId}`,
       type,
       title: '',
       position,
@@ -66,6 +76,14 @@ export function FieldPanel() {
       config: {},
       validation: {},
     })
+
+    // Persist to backend
+    try {
+      const field = await addField.mutateAsync({ pageId: selectedPageId, type, position })
+      selectField(field.id)
+    } catch {
+      // On error the query invalidation will remove the optimistic entry
+    }
   }
 
   return (

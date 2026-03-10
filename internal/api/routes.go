@@ -23,54 +23,58 @@ func NewRouter(cfg *config.Config, db *pgxpool.Pool) *gin.Engine {
 	userRepo := repository.NewUserRepository(db)
 	workspaceRepo := repository.NewWorkspaceRepository(db)
 	formRepo := repository.NewFormRepository(db)
+	builderRepo := repository.NewBuilderRepository(db)
 
 	// Services
 	workspaceSvc := service.NewWorkspaceService(workspaceRepo)
-	authSvc := service.NewAuthService(
-		userRepo,
-		workspaceSvc,
-		cfg.Auth.JWTSecret,
-		cfg.Auth.JWTExpiryHours,
-		cfg.Auth.GoogleClientID,
-	)
+	authSvc := service.NewAuthService(userRepo, workspaceSvc, cfg.Auth.JWTSecret, cfg.Auth.JWTExpiryHours, cfg.Auth.GoogleClientID)
 	formSvc := service.NewFormService(formRepo, workspaceRepo)
+	builderSvc := service.NewBuilderService(builderRepo, formRepo, workspaceRepo)
 
 	// Handlers
 	health := handlers.NewHealthHandler(db)
 	auth := handlers.NewAuthHandler(authSvc)
 	workspaces := handlers.NewWorkspaceHandler(workspaceSvc)
 	forms := handlers.NewFormHandler(formSvc)
+	builder := handlers.NewBuilderHandler(builderSvc)
 
-	// Public routes
+	// Public
 	r.GET("/health", health.Check)
 
 	v1 := r.Group("/api/v1")
-	{
-		// Auth (public)
-		v1.POST("/auth/google", auth.GoogleAuth)
 
-		// Authenticated routes
-		authed := v1.Group("")
-		authed.Use(middleware.Auth(cfg.Auth.JWTSecret))
-		{
-			// Workspaces
-			authed.GET("/workspaces", workspaces.List)
-			authed.POST("/workspaces", workspaces.Create)
-			authed.GET("/workspaces/:workspaceID", workspaces.Get)
+	// Auth (public)
+	v1.POST("/auth/google", auth.GoogleAuth)
 
-			// Forms
-			authed.GET("/workspaces/:workspaceID/forms", forms.List)
-			authed.POST("/workspaces/:workspaceID/forms", forms.Create)
-			authed.GET("/workspaces/:workspaceID/forms/:formID", forms.Get)
-			authed.PUT("/workspaces/:workspaceID/forms/:formID", forms.Update)
-			authed.POST("/workspaces/:workspaceID/forms/:formID/publish", forms.Publish)
-			authed.DELETE("/workspaces/:workspaceID/forms/:formID", forms.Delete)
-		}
+	authed := v1.Group("")
+	authed.Use(middleware.Auth(cfg.Auth.JWTSecret))
 
-		// Public form (no auth)
-		// v1.GET("/f/:formSlug", forms.GetPublic)
-		// v1.POST("/f/:formSlug/responses", responses.Submit)
-	}
+	// Workspaces
+	authed.GET("/workspaces", workspaces.List)
+	authed.POST("/workspaces", workspaces.Create)
+	authed.GET("/workspaces/:workspaceID", workspaces.Get)
+
+	// Forms
+	authed.GET("/workspaces/:workspaceID/forms", forms.List)
+	authed.POST("/workspaces/:workspaceID/forms", forms.Create)
+	authed.GET("/workspaces/:workspaceID/forms/:formID", forms.Get)
+	authed.PUT("/workspaces/:workspaceID/forms/:formID", forms.Update)
+	authed.POST("/workspaces/:workspaceID/forms/:formID/publish", forms.Publish)
+	authed.DELETE("/workspaces/:workspaceID/forms/:formID", forms.Delete)
+
+	// Builder — full form structure + pages/fields CRUD
+	authed.GET("/workspaces/:workspaceID/forms/:formID/builder", builder.GetFormFull)
+	authed.POST("/workspaces/:workspaceID/forms/:formID/pages", builder.AddPage)
+	authed.PUT("/workspaces/:workspaceID/forms/:formID/pages/:pageID", builder.UpdatePage)
+	authed.DELETE("/workspaces/:workspaceID/forms/:formID/pages/:pageID", builder.DeletePage)
+	authed.POST("/workspaces/:workspaceID/forms/:formID/pages/:pageID/fields", builder.AddField)
+	authed.POST("/workspaces/:workspaceID/forms/:formID/pages/:pageID/fields/reorder", builder.ReorderFields)
+	authed.PUT("/workspaces/:workspaceID/forms/:formID/fields/:fieldID", builder.UpdateField)
+	authed.DELETE("/workspaces/:workspaceID/forms/:formID/fields/:fieldID", builder.DeleteField)
+
+	// Public form renderer
+	// v1.GET("/f/:formSlug", forms.GetPublic)
+	// v1.POST("/f/:formSlug/responses", responses.Submit)
 
 	return r
 }
