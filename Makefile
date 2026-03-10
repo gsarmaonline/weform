@@ -1,16 +1,28 @@
 .PHONY: build up down logs ps backend frontend run-local test test-ui
 
+ENV_FILE ?= .env.local
+DC = docker compose --env-file $(ENV_FILE)
+
 build:
-	docker compose build
+	$(DC) build
 
 up:
-	docker compose up -d
+	$(DC) up -d
 
 down:
-	docker compose down
+	$(DC) down
 
 logs:
-	docker compose logs -f
+	$(DC) logs -f
+
+ps:
+	$(DC) ps
+
+backend:
+	$(DC) build backend && $(DC) up -d backend
+
+frontend:
+	$(DC) build frontend && $(DC) up -d frontend
 
 test:
 	cd web && npx playwright test --project=chromium
