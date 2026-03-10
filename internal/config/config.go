@@ -47,11 +47,9 @@ func Load() (*Config, error) {
 	viper.SetDefault("JWT_EXPIRY_HOURS", 24)
 	viper.SetDefault("REFRESH_EXPIRY_HOURS", 168)
 
-	// Read .env then .env.local (local overrides); ignore missing files
+	// Read .env if present; ignore missing file
 	viper.SetConfigFile(".env")
 	_ = viper.ReadInConfig()
-	viper.SetConfigFile(".env.local")
-	_ = viper.MergeInConfig()
 
 	cfg := &Config{}
 	if err := viper.Unmarshal(cfg); err != nil {

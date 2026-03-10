@@ -1,6 +1,6 @@
 .PHONY: build up down logs ps backend frontend run-local test test-ui
 
-ENV_FILE ?= .env.local
+ENV_FILE ?= .env
 DC = docker compose --env-file $(ENV_FILE)
 
 build:
@@ -31,7 +31,7 @@ test-ui:
 	cd web && npx playwright test --ui
 
 run-local:
-	@ln -sf ../.env.local web/.env.local
+	@ln -sf ../.env web/.env
 	@trap 'kill 0' SIGINT; \
 	go run ./cmd/server & \
 	cd web && npm run dev & \
